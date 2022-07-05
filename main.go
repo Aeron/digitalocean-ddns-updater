@@ -107,12 +107,12 @@ func checkRecord(domain string, name string) (*godo.DomainRecord, error) {
 
 	if err != nil {
 		log.Print(err)
-		return &godo.DomainRecord{}, err
+		return nil, err
 	}
 
 	if response.StatusCode >= http.StatusMultipleChoices {
 		log.Println("Check failed:", response.Status)
-		return &godo.DomainRecord{}, errors.New(response.Status)
+		return nil, errors.New(response.Status)
 	}
 
 	for _, r := range records {
