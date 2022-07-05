@@ -1,22 +1,35 @@
-FROM golang:alpine AS build
+FROM golang:1.18-bullseye AS build-env
 
-RUN apk add --update --no-cache git
+ENV DEBIAN_FRONTEND noninteractive
 
-RUN go get github.com/digitalocean/godo
-RUN go get golang.org/x/oauth2
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git
+RUN rm -r /var/lib/apt/lists /var/cache/apt/archives
 
-COPY main.go /go/src/
-WORKDIR /go/src/
+WORKDIR /go/src/do-ddns-up
 
-RUN go build -o ddns
+COPY main.go .
+COPY go.mod .
+COPY go.sum .
 
-FROM alpine
+RUN go mod download && \
+    go mod verify
 
-RUN apk add --update --no-cache ca-certificates && \
-    update-ca-certificates
+ENV CGO_ENABLED 0
 
-COPY --from=build /go/src/ddns /bin
+RUN go build \
+    -ldflags '-extldflags "-static"' \
+    -tags timetzdata \
+    -o /go/bin/do-ddns-up
 
-EXPOSE 80 443
+# An actual image
 
-ENTRYPOINT ["/bin/ddns"]
+FROM scratch
+
+LABEL org.opencontainers.image.source https://github.com/Aeron/digitalocean-ddns-updater
+
+COPY --from=build-env /etc/ssl/certs /etc/ssl/certs
+COPY --from=build-env /go/bin/do-ddns-up /do-ddns-up
+
+ENTRYPOINT ["/do-ddns-up"]
