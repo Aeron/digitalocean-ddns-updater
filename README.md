@@ -12,16 +12,18 @@ and a strict incoming request rate limiter to mitigate a brute-force attack risk
 ## Usage
 
 This image is available as
-[`aeron/digitalocean-ddns-updater`](https://hub.docker.com/r/aeron/digitalocean-ddns-updater)
-from Docker Hub and
-[`ghcr.io/Aeron/digitalocean-ddns-updater`](https://github.com/Aeron/digitalocean-ddns-updater/pkgs/container/digitalocean-ddns-updater)
-from GitHub Container Registry. You can use them both interchangeably.
+[`aeron/digitalocean-ddns-updater`][docker] from Docker Hub and
+[`ghcr.io/Aeron/digitalocean-ddns-updater`][github] from GitHub Container Registry.
+You can use them both interchangeably.
 
 ```sh
 docker pull aeron/digitalocean-ddns-updater
 # …or…
 docker pull ghcr.io/aeron/digitalocean-ddns-updater
 ```
+
+[docker]: https://hub.docker.com/r/aeron/digitalocean-ddns-updater
+[github]: https://github.com/Aeron/digitalocean-ddns-updater/pkgs/container/digitalocean-ddns-updater
 
 ### Container Running
 
@@ -83,3 +85,10 @@ https://domain.com/ddns?domain=a.domain.com&ip=@IP&token=sup3r-l0ng-and-s3cure-t
 
 The `token` must be an URL-safe string and long enough. Using plain HTTP is not even
 considered here.
+
+## Little Side Note
+
+I’ve been using this updater since 2018—when I first wrote it—so it may not be very
+representative. I made it to be just enough then, plus a slight update now—in 2022—to
+publish it in case anyone finds it useful. So it may never see another update, code
+refactoring, or test coverage. Otherwise, it’s totally usable.
