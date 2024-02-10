@@ -1,4 +1,4 @@
-package main
+package args
 
 import (
 	"errors"
@@ -68,7 +68,7 @@ func (arg *Arg) Value() (any, error) {
 }
 
 // Parses arguments according to a given tagged structure.
-func ParseArgs(args any) error {
+func Parse(args any) error {
 	ptr := reflect.ValueOf(args)
 	val := ptr.Elem()
 	typ := val.Type()

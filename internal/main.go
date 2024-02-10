@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	arguments "github.com/aeron/digitalocean-ddns-updater/internal/args"
 	"github.com/digitalocean/godo"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
@@ -136,7 +137,7 @@ func ddnsHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	if err := ParseArgs(&args); err != nil {
+	if err := arguments.Parse(&args); err != nil {
 		log.Fatalln("argument parsing error:", err.Error())
 	}
 

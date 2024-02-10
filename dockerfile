@@ -1,15 +1,16 @@
-FROM golang:1.18-bullseye AS build-env
+### Builder stage ###
+FROM docker.io/library/golang:1.22-bookworm AS build-env
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+RUN apt update -qq && apt install -y --no-install-recommends \
     ca-certificates \
     git
 RUN rm -r /var/lib/apt/lists /var/cache/apt/archives
 
 WORKDIR /go/src/do-ddns-up
 
-COPY main.go .
+COPY internal/ internal/
 COPY go.mod .
 COPY go.sum .
 
@@ -21,10 +22,10 @@ ENV CGO_ENABLED 0
 RUN go build \
     -ldflags '-extldflags "-static"' \
     -tags timetzdata \
-    -o /go/bin/do-ddns-up
+    -o /go/bin/do-ddns-up \
+    ./internal
 
-# An actual image
-
+### Runtime stage ###
 FROM scratch
 
 LABEL org.opencontainers.image.source https://github.com/Aeron/digitalocean-ddns-updater
