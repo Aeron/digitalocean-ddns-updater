@@ -5,13 +5,10 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"math"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/digitalocean/godo"
@@ -19,67 +16,17 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const (
-	defaultAddress      = ":8080"
-	defaultEndpoint     = "/ddns"
-	defaultLimitRPS     = .01
-	defaultLimitBurst   = 1
-	envVarDOAPIToken    = "DIGITALOCEAN_API_TOKEN"
-	envVarSecurityToken = "SECURITY_TOKEN"
-	envVarLimitRPS      = "LIMIT_RPS"
-	envVarLimitBurst    = "LIMIT_BURST"
-)
+var args struct {
+	Address       *string  `default:":8080" help:"address to listen on"`
+	Endpoint      *string  `default:"/ddns" help:"endpoint path to handle updates"`
+	DOAPIToken    *string  `name:"digitalocean-api-token" environ:"DIGITALOCEAN_API_TOKEN" help:"DigitalOcean API token"`
+	SecurityToken *string  `name:"security-token" environ:"SECURITY_TOKEN" help:"application security token"`
+	LimitRPS      *float64 `name:"limit-rps" default:".01" environ:"LIMIT_RPS" help:"limit requests per second"`
+	LimitBurst    *int     `name:"limit-burst" default:"1" environ:"LIMIT_BURST" help:"limit a single burst size"`
+}
 
-var (
-	address    = flag.String("address", defaultAddress, "address to listen on")
-	endpoint   = flag.String("endpoint", defaultEndpoint, "endpoint to handle updates")
-	doAPIToken = flag.String(
-		"digitalocean-api-token",
-		getEnvString(envVarDOAPIToken, ""),
-		"DigitalOcean API token",
-	)
-	securityToken = flag.String(
-		"security-token",
-		getEnvString(envVarSecurityToken, ""),
-		"security token",
-	)
-	limitRPS = flag.Float64(
-		"limit-rps",
-		getEnvFloat64(envVarLimitRPS, defaultLimitRPS),
-		"limit requests per second",
-	)
-	limitBurst = flag.Int(
-		"limit-burst",
-		getEnvInt(envVarLimitBurst, defaultLimitBurst),
-		"limit a single burst size",
-	)
-)
-
-var limiter = rate.NewLimiter(rate.Limit(*limitRPS), *limitBurst)
+var limiter *rate.Limiter
 var digitalOceanClient *godo.Client
-
-func getEnvString(key string, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	value, err := strconv.Atoi(getEnvString(key, ""))
-	if err != nil {
-		return fallback
-	}
-	return value
-}
-
-func getEnvFloat64(key string, fallback float64) float64 {
-	value, err := strconv.ParseFloat(getEnvString(key, ""), 64)
-	if err != nil {
-		return fallback
-	}
-	return value
-}
 
 func limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +108,7 @@ func ddnsHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if token != *securityToken {
+	if token != *args.SecurityToken {
 		http.Error(res, "Authentication failed", http.StatusUnauthorized)
 		return
 	}
@@ -189,19 +136,20 @@ func ddnsHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	flag.Parse()
+	if err := ParseArgs(&args); err != nil {
+		log.Fatalln("argument parsing error:", err.Error())
+	}
 
-	if *doAPIToken == "" {
+	if *args.DOAPIToken == "" {
 		log.Fatalln("DigitalOcean API token is required")
 	}
 
-	if *securityToken == "" {
-		hash := sha512.Sum512_256([]byte(*doAPIToken))
-		hashHex := hex.EncodeToString(hash[:])
-		securityToken = &hashHex
+	if *args.SecurityToken == "" {
+		hash := sha512.Sum512_256([]byte(*args.DOAPIToken))
+		*args.SecurityToken = hex.EncodeToString(hash[:])
 	}
 
-	tokenPrepared := &oauth2.Token{AccessToken: *doAPIToken}
+	tokenPrepared := &oauth2.Token{AccessToken: *args.DOAPIToken}
 	digitalOceanClient = godo.NewClient(
 		oauth2.NewClient(
 			context.Background(),
@@ -209,14 +157,16 @@ func main() {
 		),
 	)
 
+	limiter = rate.NewLimiter(rate.Limit(*args.LimitRPS), *args.LimitBurst)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc(defaultEndpoint, ddnsHandler)
+	mux.HandleFunc(*args.Endpoint, ddnsHandler)
 
 	go func() {
-		log.Println("Starting server on", *address)
-		log.Println("Auth token:", *securityToken)
+		log.Println("Starting server on", *args.Address)
+		log.Println("Auth token:", *args.SecurityToken)
 
-		if err := http.ListenAndServe(*address, limit(mux)); err != nil {
+		if err := http.ListenAndServe(*args.Address, limit(mux)); err != nil {
 			log.Fatalln("Server error:", err)
 		}
 	}()
