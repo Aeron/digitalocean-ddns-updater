@@ -6,7 +6,11 @@ import (
 	"strings"
 )
 
+const defaultType = "A"
+const anotherType = "AAAA"
+
 type params struct {
+	kind   string
 	name   string
 	domain string
 	token  string
@@ -14,14 +18,19 @@ type params struct {
 }
 
 func parseParams(v *url.Values) (*params, error) {
-	domain, token, ip := v.Get("domain"), v.Get("token"), v.Get("ip")
+	domain, token, addr := v.Get("domain"), v.Get("token"), v.Get("ip")
+	kind := strings.ToUpper(v.Get("type"))
 
-	if domain == "" || token == "" || ip == "" {
+	if domain == "" || token == "" || addr == "" {
 		return nil, errors.New("Empty domain, token, or IP value")
+	} else if kind == "" {
+		kind = defaultType
+	} else if kind != defaultType && kind != anotherType {
+		return nil, errors.New("Invalid type")
 	}
 
 	if parts := strings.SplitN(domain, ".", 2); parts[0] != "" && parts[1] != "" {
-		return &params{parts[0], parts[1], token, ip}, nil
+		return &params{kind, parts[0], parts[1], token, addr}, nil
 	}
 	return nil, errors.New("Invalid record name")
 }

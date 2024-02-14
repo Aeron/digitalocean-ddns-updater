@@ -16,7 +16,7 @@ type digitalOceanClient struct {
 }
 
 // Retrieves a record identifier for a given domain and record name pair.
-func (c *digitalOceanClient) getDNSRecordId(domain, name string) (*int, error) {
+func (c *digitalOceanClient) getDNSRecordId(domain, kind, name string) (*int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -24,7 +24,9 @@ func (c *digitalOceanClient) getDNSRecordId(domain, name string) (*int, error) {
 	opts := godo.ListOptions{Page: 0, PerPage: 0}
 	name = fmt.Sprintf("%s.%s", name, domain)
 
-	if rec, res, err := c.client.Domains.RecordsByName(ctx, domain, name, &opts); err == nil {
+	if rec, res, err := c.client.Domains.RecordsByTypeAndName(
+		ctx, domain, kind, name, &opts,
+	); err == nil {
 		if res.StatusCode != 200 {
 			return nil, errors.New(fmt.Sprintf("Unexpected response: %s", res.Status))
 		} else if len(rec) >= 1 && rec[0].ID >= 0 {
