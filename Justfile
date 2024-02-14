@@ -1,6 +1,9 @@
 tidy:
-	go mod tidy
-	go mod verify
+    go mod tidy
+    go mod verify
 
 run: tidy
-	go run ./...
+    go run ./...
+
+test *FLAGS:
+    go test ./... {{FLAGS}}

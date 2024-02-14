@@ -70,14 +70,19 @@ func (arg *Arg) Value() (any, error) {
 // Parses arguments according to a given tagged structure.
 func Parse(args any) error {
 	ptr := reflect.ValueOf(args)
+
+	if ptr.Kind() != reflect.Pointer || ptr.Elem().Kind() != reflect.Struct {
+		return errors.New("arguments must be a pointer to a structure")
+	}
+
 	val := ptr.Elem()
 	typ := val.Type()
 
-	if ptr.Kind() != reflect.Pointer || typ.Kind() != reflect.Struct {
-		return errors.New("must be a pointer to a structure")
-	}
-
 	for _, field := range reflect.VisibleFields(typ) {
+		if field.Type.Kind() != reflect.Pointer {
+			return errors.New("every field must be a pointer")
+		}
+
 		arg := Arg{
 			Field:   &field,
 			Default: field.Tag.Get("default"),
