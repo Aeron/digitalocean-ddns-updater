@@ -9,15 +9,38 @@ OpenWRT and DD-WRT as well.
 As a security measure, the updater uses a simple token as a first authentication factor
 and a strict incoming request rate limiter to mitigate a brute-force attack risk.
 
+## Motivation
+
+As a human being with [Tomato][freshtomato] firmware on all my routers who need access
+to a home network once a year, I need an alternative to stop paying my ISP for a static
+IP address. And you’re right—it sounds like DDNS.
+
+But I already manage my domains on [DigitalOcean][digitalocean], so why use any
+3rd-party service? A self-hosted solution is a preferable one. Yet, I don’t recall
+finding any suitable FOSS at a time.
+
+Also, in 2017, I just began skimming Go, and it was an excellent opportunity to make
+something small yet usable, a tiny pet project. And so I did.
+
+It wasn’t pretty back then, but it worked well enough. After version [1.0][release-1.0],
+I haven’t touched it for a long time. But now it looks okay as well, somewhat
+representative even.
+
+If it fits your DDNS needs, feel free to give it a try.
+
+[freshtomato]: https://freshtomato.org
+[digitalocean]: https://digitalocean.com
+[release-1.0]: https://github.com/Aeron/digitalocean-ddns-updater/releases/tag/1.0.0
+
 ## Usage
 
-This image is available as
-[`aeron/digitalocean-ddns-updater`][docker] from Docker Hub and
-[`ghcr.io/Aeron/digitalocean-ddns-updater`][github] from GitHub Container Registry.
-You can use them both interchangeably.
+The container image is available as
+[`docker.io/aeron/digitalocean-ddns-updater`][docker] and
+[`ghcr.io/Aeron/digitalocean-ddns-updater`][github]. You can use them both
+interchangeably.
 
 ```sh
-docker pull aeron/digitalocean-ddns-updater
+docker pull docker.io/aeron/digitalocean-ddns-updater
 # …or…
 docker pull ghcr.io/aeron/digitalocean-ddns-updater
 ```
@@ -73,6 +96,7 @@ it should be safe. A security token will be displayed in a container logs on sta
 
 To make it work properly, the following URL query parameters are required:
 
+- `type` (optional) — a DNS record type that will be updated (default: `A`);
 - `domain` — a domain name that will be updated with a supplied IP address;
 - `ip` — an IP address that will bu supplued as a new value for a provided domain;
 - `token` — a security token, which must be the same as the updater has.
@@ -80,15 +104,11 @@ To make it work properly, the following URL query parameters are required:
 In case of Tomato, a custom URL must look alike:
 
 ```text
-https://domain.com/ddns?domain=a.domain.com&ip=@IP&token=sup3r-l0ng-and-s3cure-t0k3n
+https://domain.com/ddns?domain=home.example.net&ip=@IP&token=sup3r-l0ng-and-s3cure-t0k3n
 ```
 
-The `token` must be an URL-safe string and long enough. Using plain HTTP is not even
-considered here.
+The `token` must be an URL-safe string and long enough. The `@IP` part is a standard
+placeholder for an IP address that Tomato will replace with the real one.
 
-## Little Side Note
-
-I’ve been using this updater since 2018—when I first wrote it—so it may not be very
-representative. I made it to be just enough then, plus a slight update now—in 2022—to
-publish it in case anyone finds it useful. So it may never see another update, code
-refactoring, or test coverage. Otherwise, it’s totally usable.
+> [!WARNING]
+> Plain HTTP use is not even considered here. It must run behind HTTPS.
