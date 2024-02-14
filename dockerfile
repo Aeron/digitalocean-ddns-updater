@@ -8,11 +8,9 @@ RUN apt update -qq && apt install -y --no-install-recommends \
     git
 RUN rm -r /var/lib/apt/lists /var/cache/apt/archives
 
-WORKDIR /go/src/do-ddns-up
+WORKDIR /go/src
 
-COPY internal/ internal/
-COPY go.mod .
-COPY go.sum .
+COPY . .
 
 RUN go mod download && \
     go mod verify
@@ -22,8 +20,8 @@ ENV CGO_ENABLED 0
 RUN go build \
     -ldflags '-extldflags "-static"' \
     -tags timetzdata \
-    -o /go/bin/do-ddns-up \
-    ./internal
+    -o /go/bin \
+    ./...
 
 ### Runtime stage ###
 FROM scratch
@@ -31,6 +29,6 @@ FROM scratch
 LABEL org.opencontainers.image.source https://github.com/Aeron/digitalocean-ddns-updater
 
 COPY --from=build-env /etc/ssl/certs /etc/ssl/certs
-COPY --from=build-env /go/bin/do-ddns-up /do-ddns-up
+COPY --from=build-env /go/bin/app /app
 
-ENTRYPOINT ["/do-ddns-up"]
+ENTRYPOINT ["/app"]
