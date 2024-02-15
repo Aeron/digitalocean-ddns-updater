@@ -101,6 +101,10 @@ To make it work properly, the following URL query parameters are required:
 - `ip` — an IP address that will bu supplued as a new value for a provided domain;
 - `token` — a security token, which must be the same as the updater has.
 
+> [!NOTE]
+> Parameters `type` and `ip` work in pair, so you cannot specify an IPv6 address for
+> the `A` record and vise-versa.
+
 In case of Tomato, a custom URL must look alike:
 
 ```text
