@@ -10,6 +10,7 @@ import (
 	"time"
 
 	arguments "github.com/aeron/digitalocean-ddns-updater/app/args"
+	clients "github.com/aeron/digitalocean-ddns-updater/app/clients"
 	"github.com/digitalocean/godo"
 	"golang.org/x/oauth2"
 )
@@ -39,14 +40,14 @@ func main() {
 		log.Println("New auth token:", *args.SecurityToken)
 	}
 
-	client := digitalOceanClient{
-		client: godo.NewClient(
+	client := clients.DigitalOceanDomains{
+		Op: godo.NewClient(
 			oauth2.NewClient(
 				context.Background(),
 				oauth2.StaticTokenSource(&oauth2.Token{AccessToken: *args.DOAPIToken}),
 			),
-		),
-		timeout: 5 * time.Second,
+		).Domains,
+		Timeout: 5 * time.Second,
 	}
 
 	mux := http.NewServeMux()
@@ -71,8 +72,8 @@ func main() {
 
 		log.Printf("New IP for [%s] %s: %s", par.Kind, par.Name, par.Addr)
 
-		if id, err := client.getDNSRecordId(domain, par.Kind, par.Name); err == nil {
-			if err := client.updateDNSRecord(domain, *id, par.Addr); err != nil {
+		if id, err := client.GetDNSRecordId(domain, par.Kind, par.Name); err == nil {
+			if err := client.UpdateDNSRecord(domain, id, par.Addr); err != nil {
 				http.Error(w, err.Error(), http.StatusFailedDependency)
 				return
 			}
