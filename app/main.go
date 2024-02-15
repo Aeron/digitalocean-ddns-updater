@@ -63,10 +63,16 @@ func main() {
 			return
 		}
 
-		log.Printf("New IP for [%s] %s.%s: %s", par.Kind, par.Name, par.Domain, par.Addr)
+		domain, err := par.Domain()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-		if id, err := client.getDNSRecordId(par.Domain, par.Kind, par.Name); err == nil {
-			if err := client.updateDNSRecord(par.Domain, *id, par.Addr); err != nil {
+		log.Printf("New IP for [%s] %s: %s", par.Kind, par.Name, par.Addr)
+
+		if id, err := client.getDNSRecordId(domain, par.Kind, par.Name); err == nil {
+			if err := client.updateDNSRecord(domain, *id, par.Addr); err != nil {
 				http.Error(w, err.Error(), http.StatusFailedDependency)
 				return
 			}

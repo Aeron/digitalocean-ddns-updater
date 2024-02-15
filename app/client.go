@@ -22,7 +22,6 @@ func (c *digitalOceanClient) getDNSRecordId(domain, kind, name string) (*int, er
 
 	var err error
 	opts := godo.ListOptions{Page: 0, PerPage: 0}
-	name = fmt.Sprintf("%s.%s", name, domain)
 
 	if rec, res, err := c.client.Domains.RecordsByTypeAndName(
 		ctx, domain, kind, name, &opts,
