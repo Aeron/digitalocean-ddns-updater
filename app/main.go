@@ -52,21 +52,21 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc(*args.Endpoint, func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
-		par, err := parseParams(&query)
+		par, err := ParseParams(&query)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if par.token != *args.SecurityToken {
+		if par.Token != *args.SecurityToken {
 			http.Error(w, "Authentication failed", http.StatusUnauthorized)
 			return
 		}
 
-		log.Printf("New IP for [%s] %s.%s: %s", par.kind, par.name, par.domain, par.addr)
+		log.Printf("New IP for [%s] %s.%s: %s", par.Kind, par.Name, par.Domain, par.Addr)
 
-		if id, err := client.getDNSRecordId(par.domain, par.kind, par.name); err == nil {
-			if err := client.updateDNSRecord(par.domain, *id, par.addr); err != nil {
+		if id, err := client.getDNSRecordId(par.Domain, par.Kind, par.Name); err == nil {
+			if err := client.updateDNSRecord(par.Domain, *id, par.Addr); err != nil {
 				http.Error(w, err.Error(), http.StatusFailedDependency)
 				return
 			}

@@ -10,14 +10,15 @@ const defaultType = "A"
 const anotherType = "AAAA"
 
 type params struct {
-	kind   string
-	name   string
-	domain string
-	token  string
-	addr   string
+	Kind   string
+	Name   string
+	Domain string
+	Token  string
+	Addr   string
 }
 
-func parseParams(v *url.Values) (*params, error) {
+// Parses app supported query parameters.
+func ParseParams(v *url.Values) (*params, error) {
 	domain, token, addr := v.Get("domain"), v.Get("token"), v.Get("ip")
 	kind := strings.ToUpper(v.Get("type"))
 
