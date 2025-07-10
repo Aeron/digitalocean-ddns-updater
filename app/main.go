@@ -4,16 +4,23 @@ import (
 	"context"
 	"crypto/sha512"
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"github.com/digitalocean/godo"
+	"golang.org/x/oauth2"
 
 	arguments "github.com/aeron/digitalocean-ddns-updater/app/args"
 	clients "github.com/aeron/digitalocean-ddns-updater/app/clients"
-	"github.com/digitalocean/godo"
-	"golang.org/x/oauth2"
 )
+
+const shutdownTimeout = 5 * time.Second
+const requestTimeout = 5 * time.Second
 
 var args struct {
 	Address       *string  `default:":8080" help:"address to listen on"`
@@ -25,6 +32,7 @@ var args struct {
 }
 
 func main() {
+	// Parsing and validating arguments
 	if err := arguments.Parse(&args); err != nil {
 		log.Fatalln("Argument parsing error:", err.Error())
 	}
@@ -40,6 +48,7 @@ func main() {
 		log.Println("New auth token:", *args.SecurityToken)
 	}
 
+	// Setting up the DigitalOcean client
 	client := clients.DigitalOceanDomains{
 		Op: godo.NewClient(
 			oauth2.NewClient(
@@ -47,54 +56,49 @@ func main() {
 				oauth2.StaticTokenSource(&oauth2.Token{AccessToken: *args.DOAPIToken}),
 			),
 		).Domains,
-		Timeout: 5 * time.Second,
+		Timeout: requestTimeout,
 	}
 
+	// Setting up the controller
+	controller := Controller{&client}
+
+	// Setting up the router
 	mux := http.NewServeMux()
-	mux.HandleFunc(*args.Endpoint, func(w http.ResponseWriter, r *http.Request) {
-		query := r.URL.Query()
-		par, err := ParseParams(&query)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	mux.HandleFunc(*args.Endpoint, controller.Handle)
 
-		if par.Token != *args.SecurityToken {
-			http.Error(w, "Authentication failed", http.StatusUnauthorized)
-			return
-		}
+	// Setting up the server
+	server := http.Server{
+		Addr:    *args.Address,
+		Handler: limit(mux),
+	}
 
-		domain, err := par.Domain()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	// Setting up the signal channel
+	sigChan := make(chan os.Signal, 1)
+	defer close(sigChan)
 
-		log.Printf("New IP for [%s] %s: %s", par.Kind, par.Name, par.Addr)
+	// Binding the shutdown signals
+	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
-		if id, err := client.GetDNSRecordId(domain, par.Kind, par.Name); err == nil {
-			if err := client.UpdateDNSRecord(domain, id, par.Addr); err != nil {
-				http.Error(w, err.Error(), http.StatusFailedDependency)
-				return
-			}
-		} else {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(200)
-		fmt.Fprintln(w, "Done")
-	})
-
+	// Running the server
 	go func() {
-		log.Println("Starting server on", *args.Address)
-
-		if err := http.ListenAndServe(*args.Address, limit(mux)); err != nil {
-			log.Fatalln("Server error:", err)
+		log.Println("Starting server on", server.Addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalln("Fatal server error:", err)
 		}
 	}()
 
-	select {}
+	// Listening for the channel/signal
+	sig := <-sigChan
+
+	// Shutting down
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	log.Println("Shutting down server on", sig.String())
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server shutdown gracefully")
 }
