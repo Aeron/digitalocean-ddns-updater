@@ -1,5 +1,5 @@
 ### Builder stage ###
-FROM docker.io/library/golang:1.22-bookworm AS build-env
+FROM docker.io/library/golang:1.24-bookworm AS build-env
 
 ENV DEBIAN_FRONTEND noninteractive
 
