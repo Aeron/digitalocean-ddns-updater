@@ -28,7 +28,7 @@ jobs:
         uses: docker/setup-qemu-action@v4.2.0
       - name: Build Image
         id: build-image
-        uses: redhat-actions/buildah-build@v3
+        uses: redhat-actions/buildah-build@v3.0.2
         with:
           tags: >-
             ${{ steps.recase.outputs.lowercase }}:latest
